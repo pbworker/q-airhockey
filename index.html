@@ -500,27 +500,31 @@
       <h3>Quantum Gates (⚛ mode only)</h3>
       <div class="howto-gate-row">
         <span class="howto-gate-key">H</span>
-        <span class="howto-gate-desc"><strong>Superposition</strong> — puck splits into 2. Only one is real. Costs 20⚡</span>
+        <span class="howto-gate-desc"><strong>Hadamard</strong> — split puck in 2, only one real &nbsp;<span style="color:#57606a">20⚡</span></span>
       </div>
       <div class="howto-gate-row">
         <span class="howto-gate-key">X</span>
-        <span class="howto-gate-desc"><strong>Flip</strong> — reverses puck direction. Costs 10⚡</span>
+        <span class="howto-gate-desc"><strong>Pauli-X</strong> — reverse puck direction &nbsp;<span style="color:#57606a">10⚡</span></span>
       </div>
       <div class="howto-gate-row">
         <span class="howto-gate-key">Z</span>
-        <span class="howto-gate-desc"><strong>Phase</strong> — curves the puck sideways. Costs 10⚡</span>
+        <span class="howto-gate-desc"><strong>Pauli-Z</strong> — curve trajectory sideways &nbsp;<span style="color:#57606a">10⚡</span></span>
       </div>
       <div class="howto-gate-row">
         <span class="howto-gate-key" style="font-size:9px">CNOT</span>
-        <span class="howto-gate-desc"><strong>Entangle</strong> — two pucks travel linked paths. Costs 35⚡</span>
+        <span class="howto-gate-desc"><strong>Controlled-NOT</strong> — second puck goes 90° perpendicular &nbsp;<span style="color:#57606a">35⚡</span></span>
       </div>
       <div class="howto-gate-row">
         <span class="howto-gate-key" style="font-size:9px;border-color:rgba(255,215,0,0.6);color:#ffd700">CCX</span>
-        <span class="howto-gate-desc"><strong style="color:#ffd700">GHZ state</strong> — after H→CNOT, fires 3-qubit entanglement. Zeros opponent score + locks their gates 10 s! Costs 30+30⚡</span>
+        <span class="howto-gate-desc"><strong style="color:#ffd700">Toffoli / GHZ</strong> — fire after H→CNOT: zeros opponent score, locks gates 10 s &nbsp;<span style="color:#57606a">30+30⚡</span></span>
       </div>
-      <div class="howto-row" style="margin-top:8px">
+      <div class="howto-row" style="margin-top:10px;font-size:11px">
+        <span class="label">Stack gates</span>
+        <span class="val">Fire on existing state to evolve it</span>
+      </div>
+      <div class="howto-row" style="font-size:11px">
         <span class="label">Collapse</span>
-        <span class="val">Paddle hits puck in your own half = measurement</span>
+        <span class="val">Goal scored or timer expires</span>
       </div>
     </div>
 
