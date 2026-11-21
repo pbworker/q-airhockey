@@ -348,15 +348,22 @@ let scale = 1, OX = 0, OY = 0;
 function resize() {
   canvas.width  = window.innerWidth;
   canvas.height = window.innerHeight;
-  // reserve space for gate bar in quantum mode
-  const usableH = gameMode === "quantum"
-    ? canvas.height - 90
-    : canvas.height;
-  const sx = canvas.width / FIELD_W;
+
+  const HUD_TOP    = 54;                        // top score bar (always present)
+  const GATE_BAR   = gameMode === "quantum" ? 90 : 0;
+  const HUD_BOT    = gameMode === "quantum" ? 0 : 54;  // bottom bar only in classic
+
+  // Usable area: full width, height minus all chrome
+  const usableW = canvas.width;
+  const usableH = canvas.height - HUD_TOP - GATE_BAR - HUD_BOT;
+
+  const sx = usableW / FIELD_W;
   const sy = usableH / FIELD_H;
   scale = Math.min(sx, sy);
-  OX = (canvas.width  - FIELD_W * scale) / 2;
-  OY = (usableH - FIELD_H * scale) / 2;
+
+  // Centre the field within usable area
+  OX = (usableW - FIELD_W * scale) / 2;
+  OY = HUD_TOP + (usableH - FIELD_H * scale) / 2;
 }
 window.addEventListener("resize", resize);
 
@@ -1478,7 +1485,7 @@ function draw(alpha) {
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillStyle = "rgba(255,255,255,0.85)";
     ctx.shadowColor = "#3b82d4"; ctx.shadowBlur = px(0.08);
-    ctx.fillText(state.countdown, canvas.width/2, (canvas.height - (gameMode==="quantum"?90:0))/2 + OY);
+    ctx.fillText(state.countdown, canvas.width/2, OY + px(FIELD_H/2));
     ctx.shadowBlur = 0;
   }
 }
