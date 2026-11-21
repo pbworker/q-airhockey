@@ -17,19 +17,20 @@ Quantum Air Hockey is a conference-ready arcade game built on a 43" touch table 
 | Mode | Description |
 |---|---|
 | **Classic** | Pure air hockey — no quantum mechanics |
-| **⚛ Quantum** | Full quantum mode with gate cards, energy system, circuit display, and Q-BOT |
+| **⚛ Quantum** | Full quantum mode with gate cards, energy system, circuit display, Q-BOT, and gate stacking |
 
 ---
 
 ## Quantum Gates
 
-| Button | Gate | In-game effect | Energy cost |
+| Button | Gate | First-time effect | Energy cost |
 |---|---|---|---|
-| **H** | Hadamard | **SPLIT** — two identical pucks appear; only one is physically real (50/50, hidden). Ghost bounces off paddles. After 6 s or on goal the fake dissolves. | 20 ⚡ |
+| **H** | Hadamard | **SPLIT** — puck becomes two identical copies; only one is physically real (50/50, hidden). Ghost bounces off paddles. Auto-collapses after 6 s or on goal. | 20 ⚡ |
 | **X** | Pauli-X | **REVERSE** — flips the puck's velocity direction | 10 ⚡ |
 | **Z** | Pauli-Z | **PHASE** — adds a lateral kick, curving the trajectory | 10 ⚡ |
-| **CNOT** | Controlled-NOT | **ENTANGLED** — two pucks travel perpendicular paths, both equally likely to be real | 35 ⚡ |
-| **H → CNOT** | Bell state Φ⁺ | **BELL STATE** — creates `(|00⟩+|11⟩)/√2`. Both pucks are independent physical threats heading toward opposite goals. They pulse in-phase (correlated). Measuring (scoring) collapses both instantly. | 55 ⚡ combined |
+| **CNOT** | Controlled-NOT | **ENTANGLED** — two pucks travel perpendicular paths, both equally likely real. Auto-collapses after 9 s. | 35 ⚡ |
+| **H → CNOT** | Bell state Φ⁺ | **BELL** — ghost teleports to the opposite half heading toward the other goal. Two independent scoring threats. Collapses after 12 s or on goal. | 55 ⚡ combined |
+| **CCX** | Toffoli (3-qubit) | **GHZ** — requires H → CNOT → CCX sequence. Zeros opponent score + locks their gates 10 s. | 30 ⚡ each |
 
 ### Bell State Φ⁺
 
@@ -39,7 +40,56 @@ Applying **H** on one qubit followed by **CNOT** produces the maximally entangle
 |Φ⁺⟩ = (|00⟩ + |11⟩) / √2
 ```
 
-In-game: both pucks move independently across the full table and can each score a goal. When either puck is measured (crosses a goal line), the entanglement collapses — Q-BOT narrates the result.
+Both pucks move independently across the full table and can each score. When either puck enters a goal, the entanglement collapses — Q-BOT narrates the result.
+
+### GHZ State (3-qubit)
+
+The most powerful quantum state in the game. Requires a 3-step cooperative/sequential sequence:
+
+```
+H → CNOT → CCX  =  (|000⟩ + |111⟩) / √2
+```
+
+**CCX (Toffoli)** is a cooperative gate: costs 30 ⚡ from each player. Either player can press it, but both must have ≥ 30 ⚡. When fired after the full H → CNOT sequence:
+
+- Opponent's score is **reset to 0**
+- Opponent's gate buttons are **locked for 10 seconds**
+- Q-BOT announces the GHZ state
+
+**Counter-play:** The opponent can fire **X** to flip their qubit back to |0⟩, breaking the Bell state before the third gate completes.
+
+---
+
+## Gate Stacking
+
+Firing a gate while the puck is already in a quantum state **evolves** that state rather than resetting it. Both players can stack gates — this creates a full quantum circuit on the puck in real time.
+
+### Upgrade paths (state gets stronger)
+
+| Current state | Gate fired | Result |
+|---|---|---|
+| SPLIT | CNOT | → **BELL** — ghost teleports to opposite half |
+
+### Modify paths (state changes behaviour, stays same level)
+
+| Current state | Gate fired | Effect |
+|---|---|---|
+| SPLIT | X | Both copies reverse direction |
+| SPLIT | Z | Both copies curve simultaneously |
+| SPLIT | H | **Quantum erasure** — which is real re-randomised, ghost angles re-spread |
+| ENTANGLED | X | Both perpendicular pucks reverse |
+| ENTANGLED | Z | Both curved |
+| ENTANGLED | CNOT | Hidden variable re-rolled — was-real may no longer be |
+| BELL | X | Both Bell partners reverse |
+| BELL | Z | Both Bell partners curve |
+| BELL | CNOT | Correlated pair re-measured, realIs re-rolled |
+
+### Downgrade paths (opponent disruption)
+
+| Current state | Gate fired | Result |
+|---|---|---|
+| ENTANGLED | H | → **SPLIT** — decohere to simpler state, ghost direction re-randomised |
+| BELL | H | → **ENTANGLED** — entanglement weakened, ghost snaps back nearby |
 
 ---
 
@@ -47,23 +97,51 @@ In-game: both pucks move independently across the full table and can each score 
 
 | Player | Move paddle | Gate shortcuts |
 |---|---|---|
-| P1 | WASD or left stick (Gamepad 1) | Q=H · E=X · R=Z · F=CNOT |
-| P2 | Arrow keys or left stick (Gamepad 2) | U=H · O=X · P=Z · [=CNOT |
+| P1 | WASD or left stick (Gamepad 1) | Q=H · E=X · R=Z · F=CNOT · G=CCX |
+| P2 | Arrow keys or left stick (Gamepad 2) | U=H · O=X · P=Z · [=CNOT · ]=CCX |
 | Both | Touch (each player's half of screen) | Tap gate buttons on the bar |
 
-Gamepad face buttons (A/B/X/Y) also fire H/X/Z/CNOT.
+Gamepad face buttons (A/B/X/Y) fire H/X/Z/CNOT. Either player's gamepad can fire CCX.
+
+**Win screen:** Space / Enter / any gamepad button = instant rematch.
 
 ---
 
 ## Energy System
 
-Both players start with **100 ⚡** per match.
+Both players start with **100 ⚡** per match. Energy also controls **paddle speed** in quantum mode — a depleted player moves at 40% speed.
+
+### Gaining energy
 
 | Event | Energy gained |
 |---|---|
 | Paddle hit | +10 ⚡ to hitting player |
 | Wall bounce | +2.5 ⚡ each player |
 | Long rally (every 5 hits) | +15 ⚡ each player |
+| Goal scored | +25 ⚡ to scorer |
+| Goal conceded | +15 ⚡ to loser (comeback mechanic) |
+| Passive regen | +1 ⚡/s to both players |
+
+### Paddle speed vs energy
+
+| Energy | Paddle speed |
+|---|---|
+| 100 ⚡ | 100% (full speed) |
+| 50 ⚡ | 70% |
+| 0 ⚡ | 40% (minimum) |
+
+The energy bar colour signals speed: **cyan** (full) → **orange** (low) → **red** (critical).
+
+---
+
+## Collapse Rules
+
+Quantum states collapse (revealing which puck was real) only on:
+
+1. **Goal scored** — the puck enters a goal mouth
+2. **Timer expiry** — SPLIT 6 s · ENTANGLED 9 s · BELL 12 s
+
+Paddle hits do **not** collapse the state — the ghost bounces physically off paddles without being measured.
 
 ---
 
@@ -73,7 +151,7 @@ Both players start with **100 ⚡** per match.
 - Puck interpolated between ticks for smooth visuals at any frame rate
 - **Vector-impulse collision** — moving paddle slams add real speed to the puck
 - **Swept collision** goal detection — no missed goals at high speed
-- Max puck speed: 7 m/s · Max paddle speed: 1.8 m/s
+- Max puck speed: 7 m/s · Paddle speed scales 0.4–1.0× with energy
 - Both paddles constrained to their own half
 
 ---
@@ -122,7 +200,7 @@ Enable Pages on the `main` branch root — the game is immediately playable at `
 ## Project Structure
 
 ```
-index.html          — entire game (single file, ~65 KB, zero dependencies)
+index.html          — entire game (single file, ~80 KB, zero dependencies)
 README.md
 Quantum Air Hockey Concept Board.png   — original design mockup
 ```
@@ -131,11 +209,12 @@ Quantum Air Hockey Concept Board.png   — original design mockup
 
 ## Roadmap
 
-- [ ] Phase 3 — Bell Experiment mode with CHSH score display
-- [ ] Phase 4 — Decoherence model, noise simulation
-- [ ] Phase 5 — 3-qubit extension, Toffoli gate
-- [ ] Difficulty levels (Beginner → Quantum Master)
-- [ ] Leaderboard / QR code score sharing
+- [x] Phase 1 — Core air hockey (120 Hz physics, touch/gamepad/keyboard)
+- [x] Phase 2 — 2-qubit quantum engine (H/X/Z/CNOT, SPLIT/ENTANGLED/BELL, energy system)
+- [x] Phase 3 — Gate stacking, GHZ state, CCX gate, energy healing, paddle speed scaling, how-to screen, quick rematch
+- [ ] Phase 4 — CHSH/Bell experiment score display
+- [ ] Phase 5 — Decoherence timer bar (visible quantum noise)
+- [ ] Phase 6 — Attract/idle loop for unattended kiosk
 
 ---
 
