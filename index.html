@@ -1459,19 +1459,13 @@ function draw(alpha) {
     }
   }
 
-  // ── Outer border — double neon ring ───────────────────────────────────
-  // Outer soft glow pass
-  ctx.shadowColor = "#00cfff";
-  ctx.shadowBlur  = px(0.025);
-  ctx.strokeStyle = "rgba(0,210,255,0.25)";
-  ctx.lineWidth   = px(0.012);
+  // ── Outer border — layered glow (wide faint + narrow bright, NO shadowBlur) ──
+  ctx.strokeStyle = "rgba(0,210,255,0.12)"; ctx.lineWidth = px(0.022);
+  ctx.strokeRect(px(0.004), px(0.004), px(FIELD_W-0.008), px(FIELD_H-0.008));
+  ctx.strokeStyle = "rgba(0,210,255,0.30)"; ctx.lineWidth = px(0.010);
   ctx.strokeRect(px(0.008), px(0.008), px(FIELD_W-0.016), px(FIELD_H-0.016));
-  // Inner sharp neon line
-  ctx.shadowBlur  = px(0.015);
-  ctx.strokeStyle = "rgba(0,220,255,0.75)";
-  ctx.lineWidth   = px(0.005);
+  ctx.strokeStyle = "rgba(0,220,255,0.75)"; ctx.lineWidth = px(0.004);
   ctx.strokeRect(px(0.012), px(0.012), px(FIELD_W-0.024), px(FIELD_H-0.024));
-  ctx.shadowBlur  = 0;
 
   // ── Corner arcs ────────────────────────────────────────────────────────
   const cornerR = px(0.065);
@@ -1481,65 +1475,51 @@ function draw(alpha) {
     [px(FIELD_W-0.012), px(FIELD_H-0.012), Math.PI, 1.5*Math.PI],
     [px(0.012), px(FIELD_H-0.012), 1.5*Math.PI, 2*Math.PI],
   ];
-  ctx.shadowColor = "#00cfff"; ctx.shadowBlur = px(0.018);
-  ctx.strokeStyle = "rgba(0,220,255,0.5)"; ctx.lineWidth = px(0.005);
-  corners.forEach(([cx2,cy2,sa,ea]) => {
-    ctx.beginPath(); ctx.arc(cx2, cy2, cornerR, sa, ea); ctx.stroke();
-  });
-  ctx.shadowBlur = 0;
+  ctx.strokeStyle = "rgba(0,210,255,0.20)"; ctx.lineWidth = px(0.014);
+  corners.forEach(([cx2,cy2,sa,ea]) => { ctx.beginPath(); ctx.arc(cx2,cy2,cornerR,sa,ea); ctx.stroke(); });
+  ctx.strokeStyle = "rgba(0,220,255,0.55)"; ctx.lineWidth = px(0.005);
+  corners.forEach(([cx2,cy2,sa,ea]) => { ctx.beginPath(); ctx.arc(cx2,cy2,cornerR,sa,ea); ctx.stroke(); });
 
-  // ── Centre line — neon dashed ──────────────────────────────────────────
-  ctx.shadowColor = "#b060ff"; ctx.shadowBlur = px(0.022);
+  // ── Centre line — dashed purple ────────────────────────────────────────
   ctx.setLineDash([px(0.028), px(0.022)]);
-  ctx.strokeStyle = "rgba(190,110,255,0.7)";
-  ctx.lineWidth   = px(0.005);
+  ctx.strokeStyle = "rgba(190,110,255,0.25)"; ctx.lineWidth = px(0.014);
+  ctx.beginPath(); ctx.moveTo(W/2, px(0.015)); ctx.lineTo(W/2, px(FIELD_H-0.015)); ctx.stroke();
+  ctx.strokeStyle = "rgba(190,110,255,0.70)"; ctx.lineWidth = px(0.004);
   ctx.beginPath(); ctx.moveTo(W/2, px(0.015)); ctx.lineTo(W/2, px(FIELD_H-0.015)); ctx.stroke();
   ctx.setLineDash([]);
-  ctx.shadowBlur = 0;
 
-  // ── Centre circle — glowing ────────────────────────────────────────────
-  ctx.shadowColor = "#b060ff"; ctx.shadowBlur = px(0.03);
-  ctx.strokeStyle = "rgba(200,130,255,0.65)";
-  ctx.lineWidth   = px(0.005);
+  // ── Centre circle ──────────────────────────────────────────────────────
+  ctx.strokeStyle = "rgba(200,130,255,0.20)"; ctx.lineWidth = px(0.014);
   ctx.beginPath(); ctx.arc(W/2, H/2, px(0.145), 0, Math.PI*2); ctx.stroke();
-  // Centre dot
-  ctx.shadowBlur = px(0.02);
-  ctx.fillStyle  = "rgba(220,160,255,0.8)";
+  ctx.strokeStyle = "rgba(200,130,255,0.65)"; ctx.lineWidth = px(0.004);
+  ctx.beginPath(); ctx.arc(W/2, H/2, px(0.145), 0, Math.PI*2); ctx.stroke();
+  ctx.fillStyle = "rgba(220,160,255,0.85)";
   ctx.beginPath(); ctx.arc(W/2, H/2, px(0.012), 0, Math.PI*2); ctx.fill();
-  ctx.shadowBlur = 0;
 
-  // ── Goals — neon mouth + inner fill glow ──────────────────────────────
+  // ── Goals ──────────────────────────────────────────────────────────────
   const goalTop = px(FIELD_H/2 - GOAL_W/2);
   const goalBot = px(FIELD_H/2 + GOAL_W/2);
   const gd      = px(0.055);
 
-  function drawGoal(x, dir, color, glowColor) {
-    // Inner fill gradient
-    const gFill = ctx.createLinearGradient(x, goalTop, x + dir * gd, goalTop);
-    gFill.addColorStop(0, color.replace(")", ",0.25)").replace("rgb","rgba"));
-    gFill.addColorStop(1, "rgba(0,0,0,0)");
+  function drawGoal(x, dir, r, g, b) {
+    // Inner fill
+    const gFill = ctx.createLinearGradient(x, goalTop, x + dir*gd, goalTop);
+    gFill.addColorStop(0, `rgba(${r},${g},${b},0.22)`);
+    gFill.addColorStop(1, `rgba(${r},${g},${b},0)`);
     ctx.fillStyle = gFill;
-    ctx.fillRect(
-      dir > 0 ? x : x + dir * gd,
-      goalTop,
-      Math.abs(gd),
-      goalBot - goalTop
-    );
-    // Neon frame
-    ctx.shadowColor = glowColor; ctx.shadowBlur = px(0.03);
-    ctx.strokeStyle = color;
-    ctx.lineWidth   = px(0.009);
-    ctx.beginPath();
-    ctx.moveTo(x, goalTop);
-    ctx.lineTo(x + dir*gd, goalTop);
-    ctx.lineTo(x + dir*gd, goalBot);
-    ctx.lineTo(x, goalBot);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
+    ctx.fillRect(dir > 0 ? x : x+dir*gd, goalTop, Math.abs(gd), goalBot-goalTop);
+    // Wide faint stroke
+    ctx.strokeStyle = `rgba(${r},${g},${b},0.25)`; ctx.lineWidth = px(0.016);
+    ctx.beginPath(); ctx.moveTo(x,goalTop); ctx.lineTo(x+dir*gd,goalTop);
+    ctx.lineTo(x+dir*gd,goalBot); ctx.lineTo(x,goalBot); ctx.stroke();
+    // Sharp bright stroke
+    ctx.strokeStyle = `rgba(${r},${g},${b},0.90)`; ctx.lineWidth = px(0.007);
+    ctx.beginPath(); ctx.moveTo(x,goalTop); ctx.lineTo(x+dir*gd,goalTop);
+    ctx.lineTo(x+dir*gd,goalBot); ctx.lineTo(x,goalBot); ctx.stroke();
   }
 
-  drawGoal(0, -1, "rgba(59,130,212,0.9)",  "#3b82d4");   // left = blue
-  drawGoal(W,  1, "rgba(249,115,22,0.9)",  "#f97316");   // right = orange
+  drawGoal(0, -1, 59,130,212);   // left = blue
+  drawGoal(W,  1, 249,115,22);   // right = orange
 
   // Particles (trail + collapse bursts)
   for (const p of particles) {
@@ -1619,10 +1599,10 @@ function draw(alpha) {
   if (state.phase === "countdown" && state.countdown > 0) {
     ctx.font = `bold ${px(0.3)}px system-ui`;
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.shadowColor = "#3b82d4"; ctx.shadowBlur = px(0.08);
+    ctx.fillStyle = "rgba(100,180,255,0.4)";
+    ctx.fillText(state.countdown, canvas.width/2 + 2, canvas.height/2 + 2);
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
     ctx.fillText(state.countdown, canvas.width/2, canvas.height/2);
-    ctx.shadowBlur = 0;
   }
 }
 
@@ -1695,23 +1675,23 @@ function drawHUD() {
     ctx.fillRect(0, canvas.height - hh, canvas.width, 1);
   }
 
-  // P1 score — neon blue with glow
+  // P1 score
   ctx.font = `bold ${hh*0.55}px system-ui`;
   ctx.textBaseline = "middle";
-  ctx.shadowColor = "#3b82d4"; ctx.shadowBlur = hh * 0.4;
   ctx.textAlign = "left";
+  ctx.fillStyle = "rgba(100,180,255,0.35)";
+  ctx.fillText("P1", hh*0.5+1, cy+1);
   ctx.fillStyle = "#79b8ff";
   ctx.fillText("P1", hh*0.5, cy);
-  ctx.shadowBlur = 0;
   ctx.fillStyle = "#fff";
   ctx.fillText(state.score[0], hh*1.6, cy);
 
-  // P2 score — neon orange with glow
-  ctx.shadowColor = "#f97316"; ctx.shadowBlur = hh * 0.4;
+  // P2 score
   ctx.textAlign = "right";
+  ctx.fillStyle = "rgba(249,115,22,0.35)";
+  ctx.fillText("P2", canvas.width - hh*0.5+1, cy+1);
   ctx.fillStyle = "#fbbf7a";
   ctx.fillText("P2", canvas.width - hh*0.5, cy);
-  ctx.shadowBlur = 0;
   ctx.fillStyle = "#fff";
   ctx.fillText(state.score[1], canvas.width - hh*1.6, cy);
 
