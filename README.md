@@ -44,19 +44,34 @@ Both pucks move independently across the full table and can each score. When eit
 
 ### GHZ State (3-qubit)
 
-The most powerful quantum state in the game. Requires a 3-step cooperative/sequential sequence:
+The most powerful quantum state in the game. Requires a 3-step sequence:
 
 ```
 H → CNOT → CCX  =  (|000⟩ + |111⟩) / √2
 ```
 
-**CCX (Toffoli)** is a cooperative gate: costs 30 ⚡ from each player. Either player can press it, but both must have ≥ 30 ⚡. When fired after the full H → CNOT sequence:
+**CCX (Toffoli)** costs 30 ⚡ from **each** player. Either player can press the CCX button, but both must have ≥ 30 ⚡. The gate has two effects that always apply:
+
+#### Toffoli mirror-flip (always active after CCX)
+
+CCX implements the real quantum gate: flip target Q2 when both controls Q0 and Q1 are |1⟩. In-game that means:
+
+| Event | Quantum interpretation | Physical effect |
+|---|---|---|
+| Paddle hits **real puck** | Q0/Q1 measured \|1⟩ → CCX fires → Q2 flips | **Ghost's vx reverses** instantly — gold burst at ghost |
+| Paddle hits **ghost puck** | Q2 observed \|1⟩ → feeds back | **Real puck's vx reverses** — gold burst at real puck |
+
+#### GHZ bonus (requires H → CNOT → CCX sequence)
+
+When fired after a valid H → CNOT in the recent gate log **and** puck is in a quantum state:
 
 - Opponent's score is **reset to 0**
 - Opponent's gate buttons are **locked for 10 seconds**
-- Q-BOT announces the GHZ state
+- Gold particle burst + GHZ overlay + Q-BOT announcement
 
-**Counter-play:** The opponent can fire **X** to flip their qubit back to |0⟩, breaking the Bell state before the third gate completes.
+**CCX without the full sequence** still activates the Toffoli mirror-flip — useful on its own.
+
+**Counter-play:** Fire **X** to flip your qubit back to |0⟩, breaking the entangled state before the opponent completes the sequence.
 
 ---
 
