@@ -491,22 +491,13 @@ let scale = 1, OX = 0, OY = 0;
 function resize() {
   canvas.width  = window.innerWidth;
   canvas.height = window.innerHeight;
-
-  // Step 1: compute provisional scale ignoring HUD to get hudH
-  const provScale = Math.min(canvas.width / FIELD_W, canvas.height / FIELD_H);
-  // HUD height = same formula as drawHUD: Math.min(px(0.12), 54)
-  const hudH    = Math.min(provScale * 0.12, 54);
-  const gateBar = gameMode === "quantum" ? 90 : 0;
-  const hudBot  = gameMode === "quantum" ? 0 : hudH;
-
-  // Step 2: usable area after removing chrome
-  const usableH = Math.max(canvas.height - hudH - gateBar - hudBot, 100);
-
-  // Step 3: final scale fits field into usable area
+  // reserve vertical space for gate bar in quantum mode
+  const usableH = gameMode === "quantum"
+    ? canvas.height - 90
+    : canvas.height;
   scale = Math.min(canvas.width / FIELD_W, usableH / FIELD_H);
-
   OX = (canvas.width  - FIELD_W * scale) / 2;
-  OY = hudH + (usableH - FIELD_H * scale) / 2;
+  OY = (usableH       - FIELD_H * scale) / 2;
 }
 window.addEventListener("resize", resize);
 
@@ -1628,7 +1619,7 @@ function draw(alpha) {
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillStyle = "rgba(255,255,255,0.85)";
     ctx.shadowColor = "#3b82d4"; ctx.shadowBlur = px(0.08);
-    ctx.fillText(state.countdown, canvas.width/2, OY + px(FIELD_H/2));
+    ctx.fillText(state.countdown, canvas.width/2, canvas.height/2);
     ctx.shadowBlur = 0;
   }
 }
