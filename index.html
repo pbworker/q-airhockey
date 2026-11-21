@@ -492,21 +492,21 @@ function resize() {
   canvas.width  = window.innerWidth;
   canvas.height = window.innerHeight;
 
-  const HUD_TOP    = 54;                        // top score bar (always present)
-  const GATE_BAR   = gameMode === "quantum" ? 90 : 0;
-  const HUD_BOT    = gameMode === "quantum" ? 0 : 54;  // bottom bar only in classic
+  // Step 1: compute provisional scale ignoring HUD to get hudH
+  const provScale = Math.min(canvas.width / FIELD_W, canvas.height / FIELD_H);
+  // HUD height = same formula as drawHUD: Math.min(px(0.12), 54)
+  const hudH    = Math.min(provScale * 0.12, 54);
+  const gateBar = gameMode === "quantum" ? 90 : 0;
+  const hudBot  = gameMode === "quantum" ? 0 : hudH;
 
-  // Usable area: full width, height minus all chrome
-  const usableW = canvas.width;
-  const usableH = canvas.height - HUD_TOP - GATE_BAR - HUD_BOT;
+  // Step 2: usable area after removing chrome
+  const usableH = Math.max(canvas.height - hudH - gateBar - hudBot, 100);
 
-  const sx = usableW / FIELD_W;
-  const sy = usableH / FIELD_H;
-  scale = Math.min(sx, sy);
+  // Step 3: final scale fits field into usable area
+  scale = Math.min(canvas.width / FIELD_W, usableH / FIELD_H);
 
-  // Centre the field within usable area
-  OX = (usableW - FIELD_W * scale) / 2;
-  OY = HUD_TOP + (usableH - FIELD_H * scale) / 2;
+  OX = (canvas.width  - FIELD_W * scale) / 2;
+  OY = hudH + (usableH - FIELD_H * scale) / 2;
 }
 window.addEventListener("resize", resize);
 
