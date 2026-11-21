@@ -694,10 +694,11 @@ function makePuck() {
     vx: 0, vy: 0, r: PUCK_R,
     prevX: FIELD_W / 2, prevY: FIELD_H / 2,
     // quantum visual state
-    mode: "NORMAL",        // NORMAL | SPLIT
+    mode: "NORMAL",        // NORMAL | SPLIT | ENTANGLED | BELL
     ghostX: FIELD_W / 2, ghostY: FIELD_H / 2,
     ghostVx: 0, ghostVy: 0,
     splitTimer: 0,         // counts down to auto-collapse
+    toffoliActive: false,  // CCX fired: paddle hits mirror-flip the OTHER puck
   };
 }
 
@@ -1450,12 +1451,17 @@ function stepPhysics(dt) {
           }
         }
         playSound("paddle");
-        // No collapse on paddle hit — quantum state persists until goal or timer
+        // Toffoli (CCX) mirror-flip: real puck hit → flip ghost's vx (Q2 target)
+        if (puck.toffoliActive && puck.mode !== "NORMAL") {
+          puck.ghostVx *= -1;
+          burstAt(puck.ghostX, puck.ghostY, "toffoli");
+          qbotSay("CCX: paddle hit Q0/Q1=|1⟩ — Q2 flipped! Ghost direction reversed.");
+        }
       }
       puck.x += nx*(minD-d); puck.y += ny*(minD-d);
     }
     // Ghost puck physically deflects off paddles — no collapse, just bounce
-    // This makes H (slight diverge) vs CNOT (90° perpendicular) feel distinct
+    // Toffoli: ghost hit → mirror-flip the REAL puck's vx
     if (puck.mode !== "NORMAL") {
       const gdx = puck.ghostX - pad.x, gdy = puck.ghostY - pad.y;
       const gd2 = Math.hypot(gdx, gdy);
@@ -1465,6 +1471,12 @@ function stepPhysics(dt) {
         if (grv < 0) {
           const gj = -(1 + RESTITUTION_PAD) * grv;
           puck.ghostVx += gj*gnx; puck.ghostVy += gj*gny;
+          // Toffoli: ghost hit = control qubit observed → flip real puck's vx
+          if (puck.toffoliActive) {
+            puck.vx *= -1;
+            burstAt(puck.x, puck.y, "toffoli");
+            qbotSay("CCX: ghost hit Q2=|1⟩ — real puck direction flipped!");
+          }
         }
         puck.ghostX += gnx*(minD-gd2); puck.ghostY += gny*(minD-gd2);
       }
@@ -1510,6 +1522,62 @@ function burstAt(x, y, col) {
   }
 }
 
+// ── CCX / Toffoli gate: cooperative fire ─────────────────────────────────────
+// Checks for GHZ sequence (H→CNOT already in gateLog), costs 30⚡ each.
+// Sets toffoliActive so paddle hits mirror-flip the other puck.
+// GHZ effect: zero opponent score + lock their gates 10 s.
+let gateLockTimer = [0, 0]; // seconds remaining on gate lock per player
+
+function fireCCX() {
+  if (state.phase !== "play" || gameMode !== "quantum") return;
+  // Both players need 30⚡
+  if (state.energy[0] < 30 || state.energy[1] < 30) {
+    qbotSay("CCX needs 30⚡ from each player!");
+    return;
+  }
+  spendEnergy(0, 30);
+  spendEnergy(1, 30);
+
+  // Always activate toffoli mirror-flip on the current quantum state
+  puck.toffoliActive = true;
+  gateLog.push({ gate: "CCX", qubit: -1, player: -1, t: Date.now() });
+  if (gateLog.length > 8) gateLog.shift();
+
+  // Detect GHZ sequence: H → CNOT already in recent log
+  const recent = gateLog.slice(-4, -1); // last 3 before this CCX
+  const hasH    = recent.some(g => g.gate === "H");
+  const hasCNOT = recent.some(g => g.gate === "CNOT");
+
+  if (hasH && hasCNOT && puck.mode !== "NORMAL") {
+    // ── GHZ STATE (|000⟩+|111⟩)/√2 ──────────────────────────────────────
+    const opponent = state.lastGoalBy >= 0 ? state.lastGoalBy : 1;
+    const scorer   = 1 - opponent;
+    // Zero opponent score
+    state.score[opponent] = 0;
+    // Lock opponent gates 10 s
+    gateLockTimer[opponent] = 10;
+    document.getElementById(`p${opponent+1}-gates`).classList.add("locked");
+    setTimeout(() => {
+      gateLockTimer[opponent] = 0;
+      document.getElementById(`p${opponent+1}-gates`).classList.remove("locked");
+    }, 10000);
+    // Visual celebration
+    burstAt(puck.x, puck.y, "toffoli");
+    burstAt(puck.ghostX, puck.ghostY, "toffoli");
+    document.getElementById("ghz-overlay").classList.add("show");
+    setTimeout(() => document.getElementById("ghz-overlay").classList.remove("show"), 3000);
+    playSound("gate_CNOT");
+    qbotSay("⚛ GHZ STATE! (|000⟩+|111⟩)/√2 — opponent score zeroed, gates locked 10 s!");
+    showPuckModeBadge("GHZ");
+  } else {
+    // CCX without full GHZ — still activates toffoli mirror-flip
+    playSound("gate_CNOT");
+    qbotSay("CCX active — Toffoli mirror-flip engaged! Paddle hits affect the other puck.");
+    showPuckModeBadge("ENTANGLED");
+  }
+  updateCircuitDisplay();
+}
+
 // Collapse any quantum puck state → NORMAL.
 // goalScored = true means called from triggerGoal (don't show mode badge again).
 function collapseSplit(goalScored) {
@@ -1546,6 +1614,7 @@ function collapseSplit(goalScored) {
 
   puck.mode = "NORMAL";
   puck.splitTimer = 0;
+  puck.toffoliActive = false;
 }
 
 function checkGoal() {
@@ -1853,11 +1922,12 @@ function draw(alpha) {
   for (const p of particles) {
     ctx.beginPath();
     ctx.arc(px(p.x), px(p.y), px(p.r), 0, Math.PI*2);
-    if (p.col === "bell")       ctx.fillStyle = `rgba(100,255,160,${p.life*0.5})`;
+    if (p.col === "bell")           ctx.fillStyle = `rgba(100,255,160,${p.life*0.5})`;
     else if (p.col === "bell-real") ctx.fillStyle = `rgba(80,220,120,${p.life*0.6})`;
-    else if (p.col === "split") ctx.fillStyle = `rgba(180,120,255,${p.life*0.45})`;
-    else if (p.ghost)           ctx.fillStyle = `rgba(200,120,255,${p.life*0.3})`;
-    else                        ctx.fillStyle = `rgba(100,180,255,${p.life*0.4})`;
+    else if (p.col === "split")     ctx.fillStyle = `rgba(180,120,255,${p.life*0.45})`;
+    else if (p.col === "toffoli")   ctx.fillStyle = `rgba(255,215,0,${p.life*0.7})`;
+    else if (p.ghost)               ctx.fillStyle = `rgba(200,120,255,${p.life*0.3})`;
+    else                            ctx.fillStyle = `rgba(100,180,255,${p.life*0.4})`;
     ctx.fill();
   }
 
@@ -2144,6 +2214,17 @@ document.getElementById("btn-menu-back").addEventListener("click", () => {
   document.getElementById("win-screen").classList.remove("show");
   document.getElementById("gate-bar").classList.remove("show");
   document.getElementById("menu").style.display = "flex";
+});
+
+// CCX cooperative gate button
+document.getElementById("btn-ccx").addEventListener("click", () => {
+  ensureAudio();
+  fireCCX();
+});
+document.getElementById("btn-ccx").addEventListener("touchend", e => {
+  e.stopPropagation();
+  ensureAudio();
+  fireCCX();
 });
 
 // Gate button clicks
