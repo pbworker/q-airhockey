@@ -1134,8 +1134,10 @@ function stepPhysics(dt) {
           }
         }
         playSound("paddle");
-        // MEASUREMENT: paddle contact collapses the quantum state (Born rule)
-        if (puck.mode !== "NORMAL") collapseSplit(false);
+        // MEASUREMENT: only collapses when puck is in this player's own half
+        // (they "receive" the puck and observe it — zone-based measurement)
+        const inOwnHalf = pad.side === 0 ? puck.x < FIELD_W/2 : puck.x > FIELD_W/2;
+        if (puck.mode !== "NORMAL" && inOwnHalf) collapseSplit(false);
       }
       puck.x += nx*(minD-d); puck.y += ny*(minD-d);
     }
@@ -1148,10 +1150,19 @@ function stepPhysics(dt) {
         const gnx = gdx/gd2, gny = gdy/gd2;
         const grv = (puck.ghostVx-pad.vx)*gnx + (puck.ghostVy-pad.vy)*gny;
         if (grv < 0) {
-          // Paddle touched the ghost → it IS the real puck → collapse revealing it
-          puck.realIs = 1;
-          playSound("paddle");
-          collapseSplit(false);
+          // Ghost is in this player's own half → measurement triggers collapse
+          const ghostInOwnHalf = pad.side === 0 ? puck.ghostX < FIELD_W/2 : puck.ghostX > FIELD_W/2;
+          if (ghostInOwnHalf) {
+            // Paddle touched the ghost → it IS the real puck → collapse revealing it
+            puck.realIs = 1;
+            playSound("paddle");
+            collapseSplit(false);
+          } else {
+            // Ghost hit opponent's paddle outside their half — deflect only, no collapse
+            const gj = -(1 + RESTITUTION_PAD) * grv;
+            puck.ghostVx += gj*gnx; puck.ghostVy += gj*gny;
+            puck.ghostX += gnx*(minD-gd2); puck.ghostY += gny*(minD-gd2);
+          }
         } else {
           // Ghost overlap but no closing velocity — just push it out
           puck.ghostX += gnx*(minD-gd2); puck.ghostY += gny*(minD-gd2);
