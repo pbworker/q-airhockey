@@ -678,6 +678,7 @@ const state = {
   lastTime: 0,
   energy: [ENERGY_MAX, ENERGY_MAX],
   rallyCount: 0,
+  regenAccum: 0,   // passive regen accumulator (seconds)
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -904,9 +905,19 @@ function spendEnergy(player, amount) {
 
 function updateEnergyUI() {
   for (let i = 0; i < 2; i++) {
-    const pct = (state.energy[i] / ENERGY_MAX * 100).toFixed(0);
-    document.getElementById(`p${i+1}-energy-fill`).style.width = pct + "%";
-    document.getElementById(`p${i+1}-energy-val`).textContent  = Math.round(state.energy[i]);
+    const e = state.energy[i];
+    const pct = (e / ENERGY_MAX * 100).toFixed(0);
+    const fill = document.getElementById(`p${i+1}-energy-fill`);
+    fill.style.width = pct + "%";
+    // Colour shifts cyan→orange→red as energy drops
+    if (e > 50) {
+      fill.style.background = "linear-gradient(90deg,#00d4e8,#3b82d4)";
+    } else if (e > 20) {
+      fill.style.background = "linear-gradient(90deg,#f97316,#d97706)";
+    } else {
+      fill.style.background = "linear-gradient(90deg,#ef4444,#b91c1c)";
+    }
+    document.getElementById(`p${i+1}-energy-val`).textContent = Math.round(e);
   }
   refreshGateBtnStates();
 }
@@ -1220,12 +1231,18 @@ function stepPhysics(dt) {
   // Paddles
   for (let i = 0; i < 2; i++) {
     const p = paddles[i];
+    // Quantum mode: low energy = slower paddle (0⚡→40%, 100⚡→100%)
+    const speedMul = gameMode === "quantum"
+      ? 0.40 + 0.60 * (state.energy[i] / ENERGY_MAX)
+      : 1.0;
+    const padSpeed = MAX_PAD_SPEED * speedMul;
+
     if (p.touchId !== -1 && p._touchTargetX !== undefined) {
       const tx = clamp(p._touchTargetX, (i === 0 ? p.r : FIELD_W/2+p.r), (i === 0 ? FIELD_W/2-p.r : FIELD_W-p.r));
       const ty = clamp(p._touchTargetY, p.r, FIELD_H - p.r);
       const dxm = tx - p.x, dym = ty - p.y;
       const dist = Math.hypot(dxm, dym);
-      const maxStep = MAX_PAD_SPEED * dt * 4;
+      const maxStep = padSpeed * dt * 4;
       if (dist < 0.001) { p.vx = 0; p.vy = 0; }
       else {
         const step = Math.min(dist, maxStep);
@@ -1234,8 +1251,8 @@ function stepPhysics(dt) {
       }
     } else {
       const accel = (p.inputX || p.inputY) ? PAD_ACCEL : PAD_DECEL;
-      p.vx = approach(p.vx, p.inputX * MAX_PAD_SPEED, accel * dt);
-      p.vy = approach(p.vy, p.inputY * MAX_PAD_SPEED, accel * dt);
+      p.vx = approach(p.vx, p.inputX * padSpeed, accel * dt);
+      p.vy = approach(p.vy, p.inputY * padSpeed, accel * dt);
       p.x += p.vx * dt; p.y += p.vy * dt;
     }
     const minX = i === 0 ? p.r : FIELD_W/2+p.r;
@@ -1346,6 +1363,12 @@ function stepPhysics(dt) {
   // Wall bounce energy income
   if (gameMode === "quantum") {
     if (puck.y - puck.r < 0 || puck.y + puck.r > FIELD_H) addEnergy(0, 2.5), addEnergy(1, 2.5);
+    // Passive regen: +1⚡/s to both players
+    state.regenAccum += dt;
+    if (state.regenAccum >= 1.0) {
+      addEnergy(0, 1); addEnergy(1, 1);
+      state.regenAccum -= 1.0;
+    }
   }
 
   checkGoal();
@@ -1457,11 +1480,15 @@ function triggerGoal(scorer) {
   // Collapse any quantum mode before scoring — normalises main = real
   if (puck.mode !== "NORMAL") collapseSplit(true);
 
-  // Quantum: measure on goal → collapse state
+  // Quantum: measure on goal → collapse state + healing
   if (gameMode === "quantum") {
     const result = QE.measure(scorer);
     updateQubitStateUI();
-    qbotSay(`GOAL! Measurement result: |${result}⟩ — wave function collapsed.`);
+    // Scorer heals +25⚡, loser heals +15⚡ (comeback mechanic)
+    const loser = 1 - scorer;
+    addEnergy(scorer, 25);
+    addEnergy(loser, 15);
+    qbotSay(`GOAL! +25⚡ scorer · +15⚡ comeback. Measurement: |${result}⟩`);
   }
 
   playSound("goal");
@@ -1954,6 +1981,7 @@ function startGame() {
   state.lastGoalBy = 1;
   state.accumulator = 0;
   state.rallyCount = 0;
+  state.regenAccum = 0;
   state.energy = [ENERGY_MAX, ENERGY_MAX];
   resetPuck(1); resetPaddles();
   particles.length = 0;
