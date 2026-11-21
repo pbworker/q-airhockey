@@ -1279,47 +1279,127 @@ function updateParticles() {
 // RENDERER
 // ═══════════════════════════════════════════════════════════════════════════
 function draw(alpha) {
+  const tnow = Date.now();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "#060b14";
+
+  // ── Deep space background ──────────────────────────────────────────────
+  ctx.fillStyle = "#04080f";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.save();
   ctx.translate(OX, OY);
 
-  // Field glow
-  const gradient = ctx.createRadialGradient(px(FIELD_W/2),px(FIELD_H/2),px(0.1), px(FIELD_W/2),px(FIELD_H/2),px(FIELD_W*0.6));
-  gradient.addColorStop(0, "rgba(59,130,212,0.07)");
-  gradient.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, px(FIELD_W), px(FIELD_H));
+  const W = px(FIELD_W), H = px(FIELD_H);
 
-  // Field border
-  ctx.strokeStyle = "rgba(255,255,255,0.12)";
-  ctx.lineWidth = px(0.006);
-  ctx.strokeRect(px(0.01), px(0.01), px(FIELD_W-0.02), px(FIELD_H-0.02));
+  // ── Field surface: layered radial glows (blue left, orange right) ──────
+  const bgL = ctx.createRadialGradient(0, H/2, 0, 0, H/2, W * 0.7);
+  bgL.addColorStop(0, "rgba(30,80,180,0.18)");
+  bgL.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = bgL; ctx.fillRect(0, 0, W, H);
 
-  // Centre line
-  ctx.setLineDash([px(0.03), px(0.025)]);
-  ctx.strokeStyle = "rgba(255,255,255,0.15)";
-  ctx.lineWidth = px(0.004);
-  ctx.beginPath(); ctx.moveTo(px(FIELD_W/2), px(0.02)); ctx.lineTo(px(FIELD_W/2), px(FIELD_H-0.02)); ctx.stroke();
+  const bgR = ctx.createRadialGradient(W, H/2, 0, W, H/2, W * 0.7);
+  bgR.addColorStop(0, "rgba(180,60,10,0.15)");
+  bgR.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = bgR; ctx.fillRect(0, 0, W, H);
+
+  const bgC = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, W * 0.4);
+  bgC.addColorStop(0, "rgba(60,40,120,0.12)");
+  bgC.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = bgC; ctx.fillRect(0, 0, W, H);
+
+  // ── Quantum dot grid (subtle animated pulse) ───────────────────────────
+  const gridSpX = px(0.19), gridSpY = px(0.1);
+  const dotPulse = 0.4 + 0.3 * Math.sin(tnow / 1800);
+  ctx.fillStyle = `rgba(80,160,255,${dotPulse * 0.18})`;
+  for (let gx = gridSpX; gx < W - gridSpX*0.5; gx += gridSpX) {
+    for (let gy = gridSpY; gy < H - gridSpY*0.5; gy += gridSpY) {
+      const phase = Math.sin(tnow/2200 + gx*0.003 + gy*0.005);
+      const r = px(0.004) * (0.6 + 0.4 * phase);
+      ctx.beginPath(); ctx.arc(gx, gy, r, 0, Math.PI*2); ctx.fill();
+    }
+  }
+
+  // ── Outer border — double neon ring ───────────────────────────────────
+  // Outer soft glow pass
+  ctx.shadowColor = "#00cfff";
+  ctx.shadowBlur  = px(0.025);
+  ctx.strokeStyle = "rgba(0,210,255,0.25)";
+  ctx.lineWidth   = px(0.012);
+  ctx.strokeRect(px(0.008), px(0.008), px(FIELD_W-0.016), px(FIELD_H-0.016));
+  // Inner sharp neon line
+  ctx.shadowBlur  = px(0.015);
+  ctx.strokeStyle = "rgba(0,220,255,0.75)";
+  ctx.lineWidth   = px(0.005);
+  ctx.strokeRect(px(0.012), px(0.012), px(FIELD_W-0.024), px(FIELD_H-0.024));
+  ctx.shadowBlur  = 0;
+
+  // ── Corner arcs ────────────────────────────────────────────────────────
+  const cornerR = px(0.065);
+  const corners = [
+    [px(0.012), px(0.012), 0, Math.PI/2],
+    [px(FIELD_W-0.012), px(0.012), Math.PI/2, Math.PI],
+    [px(FIELD_W-0.012), px(FIELD_H-0.012), Math.PI, 1.5*Math.PI],
+    [px(0.012), px(FIELD_H-0.012), 1.5*Math.PI, 2*Math.PI],
+  ];
+  ctx.shadowColor = "#00cfff"; ctx.shadowBlur = px(0.018);
+  ctx.strokeStyle = "rgba(0,220,255,0.5)"; ctx.lineWidth = px(0.005);
+  corners.forEach(([cx2,cy2,sa,ea]) => {
+    ctx.beginPath(); ctx.arc(cx2, cy2, cornerR, sa, ea); ctx.stroke();
+  });
+  ctx.shadowBlur = 0;
+
+  // ── Centre line — neon dashed ──────────────────────────────────────────
+  ctx.shadowColor = "#b060ff"; ctx.shadowBlur = px(0.022);
+  ctx.setLineDash([px(0.028), px(0.022)]);
+  ctx.strokeStyle = "rgba(190,110,255,0.7)";
+  ctx.lineWidth   = px(0.005);
+  ctx.beginPath(); ctx.moveTo(W/2, px(0.015)); ctx.lineTo(W/2, px(FIELD_H-0.015)); ctx.stroke();
   ctx.setLineDash([]);
+  ctx.shadowBlur = 0;
 
-  // Centre circle
-  ctx.strokeStyle = "rgba(255,255,255,0.1)";
-  ctx.lineWidth = px(0.004);
-  ctx.beginPath(); ctx.arc(px(FIELD_W/2), px(FIELD_H/2), px(0.14), 0, Math.PI*2); ctx.stroke();
+  // ── Centre circle — glowing ────────────────────────────────────────────
+  ctx.shadowColor = "#b060ff"; ctx.shadowBlur = px(0.03);
+  ctx.strokeStyle = "rgba(200,130,255,0.65)";
+  ctx.lineWidth   = px(0.005);
+  ctx.beginPath(); ctx.arc(W/2, H/2, px(0.145), 0, Math.PI*2); ctx.stroke();
+  // Centre dot
+  ctx.shadowBlur = px(0.02);
+  ctx.fillStyle  = "rgba(220,160,255,0.8)";
+  ctx.beginPath(); ctx.arc(W/2, H/2, px(0.012), 0, Math.PI*2); ctx.fill();
+  ctx.shadowBlur = 0;
 
-  // Goals
+  // ── Goals — neon mouth + inner fill glow ──────────────────────────────
   const goalTop = px(FIELD_H/2 - GOAL_W/2);
   const goalBot = px(FIELD_H/2 + GOAL_W/2);
-  const gd = px(0.045);
+  const gd      = px(0.055);
 
-  ctx.lineWidth = px(0.008);
-  ctx.strokeStyle = "rgba(59,130,212,0.7)";
-  ctx.beginPath(); ctx.moveTo(0,goalTop); ctx.lineTo(-gd,goalTop); ctx.lineTo(-gd,goalBot); ctx.lineTo(0,goalBot); ctx.stroke();
-  ctx.strokeStyle = "rgba(249,115,22,0.7)";
-  ctx.beginPath(); ctx.moveTo(px(FIELD_W),goalTop); ctx.lineTo(px(FIELD_W)+gd,goalTop); ctx.lineTo(px(FIELD_W)+gd,goalBot); ctx.lineTo(px(FIELD_W),goalBot); ctx.stroke();
+  function drawGoal(x, dir, color, glowColor) {
+    // Inner fill gradient
+    const gFill = ctx.createLinearGradient(x, goalTop, x + dir * gd, goalTop);
+    gFill.addColorStop(0, color.replace(")", ",0.25)").replace("rgb","rgba"));
+    gFill.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = gFill;
+    ctx.fillRect(
+      dir > 0 ? x : x + dir * gd,
+      goalTop,
+      Math.abs(gd),
+      goalBot - goalTop
+    );
+    // Neon frame
+    ctx.shadowColor = glowColor; ctx.shadowBlur = px(0.03);
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = px(0.009);
+    ctx.beginPath();
+    ctx.moveTo(x, goalTop);
+    ctx.lineTo(x + dir*gd, goalTop);
+    ctx.lineTo(x + dir*gd, goalBot);
+    ctx.lineTo(x, goalBot);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  drawGoal(0, -1, "rgba(59,130,212,0.9)",  "#3b82d4");   // left = blue
+  drawGoal(W,  1, "rgba(249,115,22,0.9)",  "#f97316");   // right = orange
 
   // Particles (trail + collapse bursts)
   for (const p of particles) {
@@ -1458,35 +1538,49 @@ function drawHUD() {
   const hh = Math.min(px(0.12), 54);
   const cy = hh / 2;
 
-  ctx.fillStyle = "rgba(6,11,20,0.8)";
+  // Frosted neon top bar
+  ctx.fillStyle = "rgba(4,8,16,0.9)";
   ctx.fillRect(0, 0, canvas.width, hh);
+  // Cyan hairline bottom edge
+  ctx.fillStyle = "rgba(0,210,255,0.35)";
+  ctx.fillRect(0, hh - 1, canvas.width, 1);
+
   if (gameMode !== "quantum") {
+    ctx.fillStyle = "rgba(4,8,16,0.9)";
     ctx.fillRect(0, canvas.height - hh, canvas.width, hh);
+    ctx.fillStyle = "rgba(0,210,255,0.35)";
+    ctx.fillRect(0, canvas.height - hh, canvas.width, 1);
   }
 
+  // P1 score — neon blue with glow
   ctx.font = `bold ${hh*0.55}px system-ui`;
   ctx.textBaseline = "middle";
-
+  ctx.shadowColor = "#3b82d4"; ctx.shadowBlur = hh * 0.4;
   ctx.textAlign = "left";
-  ctx.fillStyle = "#3b82d4";
+  ctx.fillStyle = "#79b8ff";
   ctx.fillText("P1", hh*0.5, cy);
+  ctx.shadowBlur = 0;
   ctx.fillStyle = "#fff";
   ctx.fillText(state.score[0], hh*1.6, cy);
 
+  // P2 score — neon orange with glow
+  ctx.shadowColor = "#f97316"; ctx.shadowBlur = hh * 0.4;
   ctx.textAlign = "right";
-  ctx.fillStyle = "#f97316";
+  ctx.fillStyle = "#fbbf7a";
   ctx.fillText("P2", canvas.width - hh*0.5, cy);
+  ctx.shadowBlur = 0;
   ctx.fillStyle = "#fff";
   ctx.fillText(state.score[1], canvas.width - hh*1.6, cy);
 
+  // Centre label
   ctx.textAlign = "center";
   ctx.font = `${hh*0.3}px system-ui`;
-  ctx.fillStyle = "rgba(255,255,255,0.3)";
+  ctx.fillStyle = "rgba(0,210,255,0.4)";
   ctx.fillText(`first to ${GOALS_TO_WIN}`, canvas.width/2, cy);
 
   if (gameMode !== "quantum") {
     ctx.font = `${hh*0.28}px system-ui`;
-    ctx.fillStyle = "rgba(255,255,255,0.2)";
+    ctx.fillStyle = "rgba(255,255,255,0.18)";
     ctx.fillText("P1: WASD  |  P2: Arrow Keys  |  or Gamepad / Touch", canvas.width/2, canvas.height - hh/2);
   }
 }
