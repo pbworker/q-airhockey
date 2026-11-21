@@ -491,13 +491,12 @@ let scale = 1, OX = 0, OY = 0;
 function resize() {
   canvas.width  = window.innerWidth;
   canvas.height = window.innerHeight;
-  // reserve vertical space for gate bar in quantum mode
   const usableH = gameMode === "quantum"
     ? canvas.height - 90
     : canvas.height;
   scale = Math.min(canvas.width / FIELD_W, usableH / FIELD_H);
-  OX = (canvas.width  - FIELD_W * scale) / 2;
-  OY = (usableH       - FIELD_H * scale) / 2;
+  OX = Math.max(0, (canvas.width  - FIELD_W * scale) / 2);
+  OY = Math.max(0, (usableH       - FIELD_H * scale) / 2);
 }
 window.addEventListener("resize", resize);
 
@@ -1610,6 +1609,9 @@ function draw(alpha) {
   drawPaddle(paddles[0], "#3b82d4", "rgba(59,130,212,0.5)", "#79b8ff");
   drawPaddle(paddles[1], "#f97316", "rgba(249,115,22,0.5)",  "#fbbf7a");
 
+  // Always reset shadow before restore so it doesn't leak into HUD
+  ctx.shadowBlur = 0;
+  ctx.shadowColor = "transparent";
   ctx.restore();
 
   drawHUD();
@@ -1724,6 +1726,9 @@ function drawHUD() {
     ctx.fillStyle = "rgba(255,255,255,0.18)";
     ctx.fillText("P1: WASD  |  P2: Arrow Keys  |  or Gamepad / Touch", canvas.width/2, canvas.height - hh/2);
   }
+  // Ensure shadow never leaks out of HUD into next frame
+  ctx.shadowBlur = 0;
+  ctx.shadowColor = "transparent";
 }
 
 function lighten(hex) {
