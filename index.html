@@ -967,6 +967,138 @@ function spawnSplit(timerMult) {
 }
 
 function applyQuantumEffect(gate, player) {
+  const mode = puck.mode;
+
+  // ── GATE STACKING: apply gate on top of existing quantum state ────────────
+  if (mode !== "NORMAL") {
+    // Helper: apply lateral phase-kick to both puck and ghost
+    function phaseKick(factor) {
+      const sign = Math.random() > 0.5 ? 1 : -1;
+      const perp = Math.hypot(puck.vx, puck.vy) * factor;
+      puck.vy += perp * sign;
+      const sp = Math.hypot(puck.vx, puck.vy);
+      if (sp > MAX_PUCK_SPEED) { puck.vx *= MAX_PUCK_SPEED/sp; puck.vy *= MAX_PUCK_SPEED/sp; }
+      puck.ghostVy += Math.hypot(puck.ghostVx, puck.ghostVy) * factor * sign;
+      const gsp = Math.hypot(puck.ghostVx, puck.ghostVy);
+      if (gsp > MAX_PUCK_SPEED) { puck.ghostVx *= MAX_PUCK_SPEED/gsp; puck.ghostVy *= MAX_PUCK_SPEED/gsp; }
+    }
+
+    if (mode === "SPLIT") {
+      if (gate === "CNOT") {
+        // SPLIT + CNOT → upgrade to BELL: ghost teleports to opposite half
+        puck.mode = "BELL";
+        puck.realIs = Math.random() < 0.5 ? 0 : 1;
+        puck.splitTimer = SPLIT_DURATION * 2;
+        puck.shimmerPhase = 0;
+        const spd = Math.hypot(puck.vx, puck.vy) || 2.5;
+        puck.ghostX  = FIELD_W - puck.x;
+        puck.ghostY  = FIELD_H / 2 + (Math.random()-0.5)*0.3;
+        puck.ghostVx = -Math.abs(puck.vx || spd * 0.7);
+        puck.ghostVy = puck.vy * 0.5 + (Math.random()-0.5)*0.3;
+        showPuckModeBadge("BELL");
+        playSound("gate_CNOT");
+        qbotSay("SPLIT + CNOT → BELL STATE! Ghost teleported to opposite half.");
+        return;
+      } else if (gate === "H") {
+        // SPLIT + H → quantum erasure: re-randomise which is real + re-spread
+        puck.realIs = Math.random() < 0.5 ? 0 : 1;
+        const spd = Math.hypot(puck.vx, puck.vy) || 2.5;
+        const base = Math.atan2(puck.vy, puck.vx);
+        puck.ghostVx = spd * Math.cos(base + (Math.random()-0.5)*1.2);
+        puck.ghostVy = spd * Math.sin(base + (Math.random()-0.5)*1.2);
+        puck.splitTimer = SPLIT_DURATION;
+        showPuckModeBadge("SPLIT");
+        playSound("gate_H");
+        qbotSay("H on SPLIT → quantum erasure! Which is real re-randomised.");
+        return;
+      } else if (gate === "X") {
+        // SPLIT + X → flip both pucks
+        puck.vx *= -0.9; puck.vy *= -0.9;
+        puck.ghostVx *= -0.9; puck.ghostVy *= -0.9;
+        playSound("gate_X");
+        qbotSay("X on SPLIT — both copies reversed!");
+        return;
+      } else if (gate === "Z") {
+        // SPLIT + Z → curve both pucks
+        phaseKick(0.4);
+        playSound("gate_Z");
+        qbotSay("Z on SPLIT — both trajectories curved!");
+        return;
+      }
+    }
+
+    if (mode === "ENTANGLED") {
+      if (gate === "H") {
+        // ENTANGLED + H → degrade to SPLIT, re-randomise ghost direction
+        puck.mode = "SPLIT";
+        puck.realIs = Math.random() < 0.5 ? 0 : 1;
+        const spd = Math.hypot(puck.vx, puck.vy) || 2.5;
+        const base = Math.atan2(puck.vy, puck.vx);
+        puck.ghostVx = spd * Math.cos(base + (Math.random()-0.5)*0.8);
+        puck.ghostVy = spd * Math.sin(base + (Math.random()-0.5)*0.8);
+        puck.splitTimer = SPLIT_DURATION;
+        showPuckModeBadge("SPLIT");
+        playSound("gate_H");
+        qbotSay("H on ENTANGLED → decohered to SPLIT. Direction re-randomised.");
+        return;
+      } else if (gate === "CNOT") {
+        // ENTANGLED + CNOT → swap real/ghost identity (50/50 re-roll)
+        puck.realIs = Math.random() < 0.5 ? 0 : 1;
+        puck.splitTimer = SPLIT_DURATION * 1.5;
+        playSound("gate_CNOT");
+        qbotSay("CNOT on ENTANGLED — entangled identity swapped!");
+        return;
+      } else if (gate === "X") {
+        puck.vx *= -0.9; puck.vy *= -0.9;
+        puck.ghostVx *= -0.9; puck.ghostVy *= -0.9;
+        playSound("gate_X");
+        qbotSay("X on ENTANGLED — both entangled copies reversed!");
+        return;
+      } else if (gate === "Z") {
+        phaseKick(0.4);
+        playSound("gate_Z");
+        qbotSay("Z on ENTANGLED — both entangled paths curved!");
+        return;
+      }
+    }
+
+    if (mode === "BELL") {
+      if (gate === "H") {
+        // BELL + H → degrade to ENTANGLED, ghost snaps back nearby
+        puck.mode = "ENTANGLED";
+        const spd = Math.hypot(puck.vx, puck.vy) || 2;
+        puck.ghostX = puck.x + (Math.random()-0.5)*0.15;
+        puck.ghostY = puck.y + (Math.random()-0.5)*0.15;
+        puck.ghostVx =  puck.vy * 0.9;
+        puck.ghostVy = -puck.vx * 0.9;
+        puck.splitTimer = SPLIT_DURATION * 1.5;
+        showPuckModeBadge("ENTANGLED");
+        playSound("gate_H");
+        qbotSay("H on BELL — entanglement degraded to ENTANGLED mode.");
+        return;
+      } else if (gate === "X") {
+        puck.vx *= -0.9; puck.vy *= -0.9;
+        puck.ghostVx *= -0.9; puck.ghostVy *= -0.9;
+        playSound("gate_X");
+        qbotSay("X on BELL — both Bell partners reversed!");
+        return;
+      } else if (gate === "Z") {
+        phaseKick(0.4);
+        playSound("gate_Z");
+        qbotSay("Z on BELL — both Bell partners curved!");
+        return;
+      } else if (gate === "CNOT") {
+        // BELL + CNOT → re-roll realIs (random which partner is "real")
+        puck.realIs = Math.random() < 0.5 ? 0 : 1;
+        puck.splitTimer = SPLIT_DURATION * 2;
+        playSound("gate_CNOT");
+        qbotSay("CNOT on BELL — correlated pair re-measured!");
+        return;
+      }
+    }
+  }
+
+  // ── NORMAL mode: standard first-time gate effects ─────────────────────────
   // Detect Bell-state sequence: last gate on the other qubit was H → now CNOT
   const lastGate = gateLog.length >= 2 ? gateLog[gateLog.length - 2] : null;
   const isBellSetup = gate === "CNOT" &&
@@ -999,23 +1131,15 @@ function applyQuantumEffect(gate, player) {
   } else if (gate === "CNOT") {
     if (isBellSetup) {
       // ── BELL STATE Φ⁺ = (|00⟩+|11⟩)/√2 ─────────────────────────────
-      // Both pucks move INDEPENDENTLY but their measurement outcomes are
-      // perfectly correlated: when one is "real", the other's reality
-      // is determined by the same hidden variable (same coin flip).
-      // Visually: green-purple entangled arc, matched shimmer.
       puck.mode = "BELL";
-      puck.realIs     = Math.random() < 0.5 ? 0 : 1;   // shared hidden var
+      puck.realIs     = Math.random() < 0.5 ? 0 : 1;
       puck.splitTimer = SPLIT_DURATION * 2;
-      puck.shimmerPhase = 0;    // in-phase shimmer — they pulse together
-
-      // Ghost spawns on the opposite half, heading toward P2's goal
+      puck.shimmerPhase = 0;
       const spd = Math.hypot(puck.vx, puck.vy) || 2.5;
       puck.ghostX  = FIELD_W - puck.x;
       puck.ghostY  = FIELD_H / 2 + (Math.random()-0.5)*0.3;
-      // Ghost heads the opposite direction (toward the other goal)
       puck.ghostVx = -Math.abs(puck.vx || spd * 0.7);
       puck.ghostVy = puck.vy * 0.5 + (Math.random()-0.5)*0.3;
-
       showPuckModeBadge("BELL");
       playSound("gate_CNOT");
       qbotSay("BELL STATE Φ⁺! Entangled pair — measuring one instantly collapses both.");
@@ -1023,9 +1147,8 @@ function applyQuantumEffect(gate, player) {
       // ── CNOT only: standard entangled split ──────────────────────────
       puck.mode = "ENTANGLED";
       spawnSplit(1.5);
-      // Ghost travels perpendicular to real puck
       const spd = Math.hypot(puck.vx, puck.vy) || 2;
-      puck.ghostVx =  puck.vy  * 0.9;   // rotate 90°
+      puck.ghostVx =  puck.vy  * 0.9;
       puck.ghostVy = -puck.vx  * 0.9;
       showPuckModeBadge("ENTANGLED");
       playSound("gate_CNOT");
