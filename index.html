@@ -1134,21 +1134,28 @@ function stepPhysics(dt) {
           }
         }
         playSound("paddle");
+        // MEASUREMENT: paddle contact collapses the quantum state (Born rule)
+        if (puck.mode !== "NORMAL") collapseSplit(false);
       }
       puck.x += nx*(minD-d); puck.y += ny*(minD-d);
     }
-    // Ghost puck also deflects off paddles (all quantum modes, cosmetic only)
-    if (puck.mode === "SPLIT" || puck.mode === "ENTANGLED" || puck.mode === "BELL") {
+    // Ghost puck paddle contact = measurement: the paddle "observed" the ghost,
+    // meaning the ghost slot is the real puck. Set realIs=1 then collapse.
+    if (puck.mode !== "NORMAL") {
       const gdx = puck.ghostX - pad.x, gdy = puck.ghostY - pad.y;
       const gd2 = Math.hypot(gdx, gdy);
       if (gd2 < minD && gd2 > 0.0001) {
         const gnx = gdx/gd2, gny = gdy/gd2;
         const grv = (puck.ghostVx-pad.vx)*gnx + (puck.ghostVy-pad.vy)*gny;
         if (grv < 0) {
-          const gj = -(1 + RESTITUTION_PAD) * grv;
-          puck.ghostVx += gj*gnx; puck.ghostVy += gj*gny;
+          // Paddle touched the ghost → it IS the real puck → collapse revealing it
+          puck.realIs = 1;
+          playSound("paddle");
+          collapseSplit(false);
+        } else {
+          // Ghost overlap but no closing velocity — just push it out
+          puck.ghostX += gnx*(minD-gd2); puck.ghostY += gny*(minD-gd2);
         }
-        puck.ghostX += gnx*(minD-gd2); puck.ghostY += gny*(minD-gd2);
       }
     }
   }
