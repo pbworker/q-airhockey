@@ -654,12 +654,14 @@ let scale = 1, OX = 0, OY = 0;
 function resize() {
   canvas.width  = window.innerWidth;
   canvas.height = window.innerHeight;
-  const usableH = gameMode === "quantum"
-    ? canvas.height - 90
-    : canvas.height;
+  // Top HUD bar = 54px fixed cap; bottom gate bar = 90px in quantum mode
+  const hudH = 54;
+  const botH = gameMode === "quantum" ? 90 : 0;
+  const usableH = canvas.height - hudH - botH;
   scale = Math.min(canvas.width / FIELD_W, usableH / FIELD_H);
-  OX = Math.max(0, (canvas.width  - FIELD_W * scale) / 2);
-  OY = Math.max(0, (usableH       - FIELD_H * scale) / 2);
+  OX = Math.max(0, (canvas.width - FIELD_W * scale) / 2);
+  // Arena starts below the HUD bar
+  OY = hudH + Math.max(0, (usableH - FIELD_H * scale) / 2);
 }
 window.addEventListener("resize", resize);
 
