@@ -4,6 +4,8 @@
 
 **[Play now →](https://pbworker.github.io/q-airhockey/)** · Single `index.html` file · Touch + Gamepad + Keyboard
 
+![Arcade start screen](1.jpg)
+
 ---
 
 ## What is it?
@@ -18,6 +20,8 @@ Quantum Air Hockey is a conference-ready arcade game built on a 43" touch table 
 |---|---|
 | **Classic** | Pure air hockey — no quantum mechanics |
 | **⚛ Quantum** | Full quantum mode with gate cards, energy system, circuit display, Q-BOT, and gate stacking |
+
+![How to play screen](h2.jpg)
 
 ---
 
@@ -108,6 +112,8 @@ Firing a gate while the puck is already in a quantum state **evolves** that stat
 
 ---
 
+![Regular gameplay — quantum mode](g1.jpg)
+
 ## Controls
 
 | Player | Move paddle | Gate shortcuts |
@@ -159,6 +165,8 @@ Quantum states collapse (revealing which puck was real) only on:
 Paddle hits do **not** collapse the state — the ghost bounces physically off paddles without being measured.
 
 ---
+
+![CCX / Toffoli active — Bell state with entangled green pucks](ccx1.jpg)
 
 ## Physics
 
